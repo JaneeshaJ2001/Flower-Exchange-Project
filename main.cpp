@@ -132,8 +132,7 @@ int main()
             {
                 OrderBook *rose = new OrderBook("Rose");
                 rose->addOrder(*order);
-                rose->printOrderBook();
-            }
+                        }
             else if (v[1] == "Lavender")
             {
                 OrderBook *lavender = new OrderBook("Lavender");
