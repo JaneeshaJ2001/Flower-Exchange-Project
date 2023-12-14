@@ -100,6 +100,13 @@ int main()
     int ordNumber = 1;
     string line;
 
+    // initially create 5 order books
+    OrderBook *rose = new OrderBook("Rose");
+    OrderBook *lavender = new OrderBook("Lavender");
+    OrderBook *tulip = new OrderBook("Tulip");
+    OrderBook *orchid = new OrderBook("Orchid");
+    OrderBook *lotus = new OrderBook("Lotus");
+
     // read the header of the file
     getline(ifile, line);
     // read the column names of the file
@@ -130,27 +137,23 @@ int main()
         {
             if (v[1] == "Rose")
             {
-                OrderBook *rose = new OrderBook("Rose");
                 rose->addOrder(*order);
-                        }
+                rose->printOrderBook();
+            }
             else if (v[1] == "Lavender")
             {
-                OrderBook *lavender = new OrderBook("Lavender");
                 lavender->addOrder(*order);
             }
             else if (v[1] == "Tulip")
             {
-                OrderBook *tulip = new OrderBook("Tulip");
                 tulip->addOrder(*order);
             }
             else if (v[1] == "Orchid")
             {
-                OrderBook *orchid = new OrderBook("Orchid");
                 orchid->addOrder(*order);
             }
             else if (v[1] == "Lotus")
             {
-                OrderBook *lotus = new OrderBook("Lotus");
                 lotus->addOrder(*order);
             }
         }
