@@ -1,5 +1,6 @@
 Orders.csv,1,2,3,4
 Client Order ID,Instrument,Side,Quantity,Price
-aa13,Rose,2,100,55
-aa14,Rose,2,100,45
-aa15,Rose,1,100,35
+aa13,Rose,1,100,55
+aa14,Rose,1,100,65
+aa15,Rose,2,300,1
+aa16,Rose,1,100,2
