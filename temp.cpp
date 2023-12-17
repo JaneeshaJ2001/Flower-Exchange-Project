@@ -122,7 +122,7 @@ public:
             }
 
             // when the order is matching with a sell orders,
-            while (sell.begin()->price <= order.price && order.quantity > 0)
+            while (!sell.empty() && sell.begin()->price <= order.price && order.quantity > 0)
             {
                 if (sell.begin()->quantity < order.quantity)
                 {
@@ -132,19 +132,24 @@ public:
 
                     order.quantity -= sell.begin()->quantity;
 
+                    Order *ord1 = findOrderByOrdID(order.orderID); // Get the order details by order ID
+                    ord1->quantity = order.quantity;               // update the current quantity of the order in orders vector
+
                     // status of the sell.begin() change to Fill
                     string b = sell.begin()->orderID;
                     Order *ord = findOrderByOrdID(b); // Get the order details by order ID
                     ord->status = status[2];          // Change the status of the sell.begin()
                     writeLineOutputFile(*ord);        // Fix: Dereference the pointer to ord
 
+                    ord->quantity = 0; // update the current quantity of the order in orders vector
+
                     sell.erase(sell.begin());
                 }
                 else
                 {
-
                     // status of the order changed to Fill
                     order.status = status[2];
+                    order.price = sell.begin()->price;
                     writeLineOutputFile(order);
 
                     sell.begin()->quantity -= order.quantity;
@@ -158,7 +163,10 @@ public:
                         ord->status = status[2];          // Change the status of the sell.begin()
                         writeLineOutputFile(*ord);        // Fix: Dereference the pointer to ord
 
+                        ord->quantity = 0; // update the current quantity of the sell order in orders vector
+
                         sell.erase(sell.begin());
+                        return;
                     }
                     else
                     {
@@ -167,12 +175,15 @@ public:
                         Order *ord = findOrderByOrdID(b); // Get the order details by order ID
                         ord->status = status[3];          // Change the status of the sell.begin()
                         writeLineOutputFile(*ord);        // Fix: Dereference the pointer to ord
+
+                        ord->quantity = sell.begin()->quantity; // update the current quantity of the sell order in orders vector
+                        return;
                     }
-                    return;
                 }
             }
 
             // place the order in the buy vector
+            item->quantity = order.quantity;
             buy.insert(buy.begin(), *item);
         }
         else
@@ -205,7 +216,7 @@ public:
             }
 
             // when the order is matching with a buy order,
-            while (buy.begin()->price >= order.price && order.quantity > 0)
+            while (!buy.empty() && buy.begin()->price >= order.price && order.quantity > 0)
             {
                 if (buy.begin()->quantity < order.quantity)
                 {
@@ -214,22 +225,29 @@ public:
 
                     order.quantity -= buy.begin()->quantity;
 
+                    Order *ord1 = findOrderByOrdID(order.orderID); // Get the order details by order ID
+                    ord1->quantity = order.quantity;               // update the current quantity of the order in orders vector
+
                     // status of the buy.begin() change to Fill
                     string b = buy.begin()->orderID;
                     Order *ord = findOrderByOrdID(b); // Get the order details by order ID
                     ord->status = status[2];          // Change the status of the sell.begin()
                     writeLineOutputFile(*ord);        // Fix: Dereference the pointer to ord
 
+                    ord->quantity = 0; // update the current quantity of the buy order in orders vector
+
                     buy.erase(buy.begin());
                 }
                 else
                 {
-
                     // status of the order changed to Fill
                     ofile << order.orderID << "," << order.clientOrderID << "," << order.instrument << "," << order.side << "," << status[2] << "," << order.quantity << "," << buy.begin()->price << "," << order.reason << endl;
 
                     buy.begin()->quantity -= order.quantity;
                     order.quantity = 0;
+
+                    Order *ord1 = findOrderByOrdID(order.orderID); // Get the order details by order ID
+                    ord1->quantity = order.quantity;               // update the current quantity of the order in orders vector
 
                     if (buy.begin()->quantity == 0)
                     {
@@ -239,7 +257,10 @@ public:
                         ord->status = status[2];          // Change the status of the sell.begin()
                         writeLineOutputFile(*ord);        // Fix: Dereference the pointer to ord
 
+                        ord->quantity = 0; // update the current quantity of the buy order in orders vector
+
                         buy.erase(buy.begin());
+                        return;
                     }
                     else
                     {
@@ -248,28 +269,16 @@ public:
                         Order *ord = findOrderByOrdID(b); // Get the order details by order ID
                         ord->status = status[3];          // Change the status of the sell.begin()
                         writeLineOutputFile(*ord);        // Fix: Dereference the pointer to ord
+
+                        ord->quantity = buy.begin()->quantity; // update the current quantity of the buy order in orders vector
+                        return;
                     }
-                    return;
                 }
             }
 
             // place the order in the sell vector
-            sell.push_back(*item);
-        }
-    }
-
-    void printOrderBook()
-    {
-        cout << "Order Book: " << instrument << endl;
-        cout << "Buy:" << endl;
-        for (int i = 0; i < buy.size(); i++)
-        {
-            cout << buy[i].orderID << " " << buy[i].quantity << " " << buy[i].price << endl;
-        }
-        cout << "Sell:" << endl;
-        for (int i = 0; i < sell.size(); i++)
-        {
-            cout << sell[i].orderID << " " << sell[i].quantity << " " << sell[i].price << endl;
+            item->quantity = order.quantity;
+            sell.insert(sell.begin(), *item);
         }
     }
 
@@ -329,7 +338,6 @@ int main()
         if (v[1] == "Rose")
         {
             rose->addOrder(*order);
-            rose->printOrderBook();
         }
         else if (v[1] == "Lavender")
         {
