@@ -1,14 +1,13 @@
 #include <iostream>
 #include <vector>
-#include <fstream> // Include the <fstream> header
+#include <fstream>
 #include <istream>
 #include <string>
 #include <sstream>
 
 using namespace std;
-ofstream ofile("Execution_Rep.csv");
 ifstream ifile("Orders.csv");
-vector<Order> orders;
+ofstream ofile("Execution_Rep.csv");
 
 string checkValidityOfOrder(vector<string> v);
 
@@ -19,7 +18,7 @@ public:
     string clientOrderID;
     string instrument;
     int side;
-    int status;
+    string status;
     int quantity;
     double price;
     string reason;
@@ -35,6 +34,20 @@ public:
         this->reason = reason;
     }
 };
+
+vector<Order> orders;
+
+Order *findOrderByOrdID(string order_id)
+{
+    for (auto &o : orders)
+    {
+        if (o.orderID == order_id)
+        {
+            return &o;
+        }
+    }
+    return nullptr;
+}
 
 class OrderBookItem
 {
@@ -53,12 +66,11 @@ public:
 
 class OrderBook
 {
-private:
+public:
     string instrument;
     vector<OrderBookItem> buy;
     vector<OrderBookItem> sell;
 
-public:
     OrderBook(string instrument)
     {
         this->instrument = instrument;
@@ -71,7 +83,8 @@ public:
         // first check the order is valid, if not write to the output file - (status = Rejected)
         if (order.reason != "")
         {
-            ofile << order.orderID << "," << order.clientOrderID << "," << order.instrument << "," << order.side << "," << status[1] << order.quantity << "," << order.price << "," << order.reason << endl;
+            order.status = status[1];
+            writeLineOutputFile(order);
             return;
         }
 
@@ -80,34 +93,31 @@ public:
 
         if (order.side == 1)
         {
-            // if the sell vecotr is empty
-            if (sell.empty())
+            // if the sell vecotr is empty or when the order is not matching with any sell orders,
+            if (sell.empty() || sell.begin()->price > order.price)
             {
                 // write to the output file - (status = New)
-                ofile << order.orderID << "," << order.clientOrderID << "," << order.instrument << "," << order.side << "," << status[0] << "," << order.quantity << "," << order.price << "," << order.reason << endl;
-
-                // place the order in the buy vector
-                buy.push_back(*item);
-                return;
-            }
-
-            // when the order is not matching with any sell orders,
-
-            if (sell.begin()->price > order.price)
-            {
-                cout << "a";
-                // write to the output file - (status = New)
-                ofile << order.orderID << "," << order.clientOrderID << "," << order.instrument << "," << order.side << "," << status[0] << "," << order.quantity << "," << order.price << "," << order.reason << endl;
+                order.status = status[0];
+                writeLineOutputFile(order);
 
                 // place corrcetly in buy vector, as buy vector is in the descending order of price
-                for (int i = 0; i < buy.size(); i++)
+                if (buy.empty())
                 {
-                    if (buy[i].price < order.price)
+                    buy.push_back(*item);
+                    return;
+                }
+                else
+                {
+                    for (int i = 0; i < buy.size(); i++)
                     {
-                        buy.insert(buy.begin() + i, *item);
-                        return;
+                        if (buy[i].price < order.price)
+                        {
+                            buy.insert(buy.begin() + i, *item);
+                            return;
+                        }
+                        buy.insert(buy.begin(), *item);
                     }
-                    buy.insert(buy.begin(), *item);
+                    return;
                 }
             }
 
@@ -117,20 +127,25 @@ public:
                 if (sell.begin()->quantity < order.quantity)
                 {
                     // status of the order changed to PFill
-                    ofile << order.orderID << "," << order.clientOrderID << "," << order.instrument << "," << order.side << "," << status[3] << sell.begin()->quantity << "," << order.price << "," << order.reason << endl;
+                    order.status = status[3];
+                    ofile << order.orderID << "," << order.clientOrderID << "," << order.instrument << "," << order.side << "," << order.status << "," << sell.begin()->quantity << "," << order.price << "," << order.reason << endl;
 
                     order.quantity -= sell.begin()->quantity;
 
                     // status of the sell.begin() change to Fill
                     string b = sell.begin()->orderID;
-                    //--auto ord = findOrderByOrdID(orders, b); // Assuming findOrderByOrdID is properly defined and returns the correct type
+                    Order *ord = findOrderByOrdID(b); // Get the order details by order ID
+                    ord->status = status[2];          // Change the status of the sell.begin()
+                    writeLineOutputFile(*ord);        // Fix: Dereference the pointer to ord
+
                     sell.erase(sell.begin());
                 }
                 else
                 {
 
                     // status of the order changed to Fill
-                    ofile << order.orderID << "," << order.clientOrderID << "," << order.instrument << "," << order.side << "," << status[2] << order.quantity << "," << order.price << "," << order.reason << endl;
+                    order.status = status[2];
+                    writeLineOutputFile(order);
 
                     sell.begin()->quantity -= order.quantity;
                     order.quantity = 0;
@@ -138,13 +153,20 @@ public:
                     if (sell.begin()->quantity == 0)
                     {
                         // status of the sell.begin() change to Fill
-                        //---
+                        string b = sell.begin()->orderID;
+                        Order *ord = findOrderByOrdID(b); // Get the order details by order ID
+                        ord->status = status[2];          // Change the status of the sell.begin()
+                        writeLineOutputFile(*ord);        // Fix: Dereference the pointer to ord
+
                         sell.erase(sell.begin());
                     }
                     else
                     {
                         // status of the sell.begin() change to PFill
-                        //---
+                        string b = sell.begin()->orderID;
+                        Order *ord = findOrderByOrdID(b); // Get the order details by order ID
+                        ord->status = status[3];          // Change the status of the sell.begin()
+                        writeLineOutputFile(*ord);        // Fix: Dereference the pointer to ord
                     }
                     return;
                 }
@@ -155,33 +177,30 @@ public:
         }
         else
         {
-            if (buy.empty())
+            // if the buy vecotr is empty or when the order is not matching with any buy orders,
+            if (buy.empty() || buy.begin()->price < order.price)
             {
                 // write to the output file - (status = New)
-                ofile << order.orderID << "," << order.clientOrderID << "," << order.instrument << "," << order.side << "," << status[0] << "," << order.quantity << "," << order.price << "," << order.reason << endl;
-
-                // place the order in the sell vector
-                sell.push_back(*item);
-                return;
-            }
-
-            // when the order is not matching with any buy orders,
-
-            if (buy.begin()->price < order.price)
-            {
-
-                // write to the output file - (status = New)
-                ofile << order.orderID << "," << order.clientOrderID << "," << order.instrument << "," << order.side << "," << status[0] << "," << order.quantity << "," << order.price << "," << order.reason << endl;
+                order.status = status[0];
+                writeLineOutputFile(order);
 
                 // place corrcetly in sell vector, as sell vector is in the ascending order of price
-                for (int i = 0; i < sell.size(); i++)
+                if (sell.empty())
                 {
-                    if (sell[i].price > order.price)
-                    {
-                        sell.insert(sell.begin() + i, *item);
-                        return;
-                    }
                     sell.push_back(*item);
+                    return;
+                }
+                else
+                {
+                    for (int i = 0; i < sell.size(); i++)
+                    {
+                        if (sell[i].price > order.price)
+                        {
+                            sell.insert(sell.begin() + i, *item);
+                            return;
+                        }
+                        sell.push_back(*item);
+                    }
                 }
             }
 
@@ -196,7 +215,11 @@ public:
                     order.quantity -= buy.begin()->quantity;
 
                     // status of the buy.begin() change to Fill
-                    //----
+                    string b = buy.begin()->orderID;
+                    Order *ord = findOrderByOrdID(b); // Get the order details by order ID
+                    ord->status = status[2];          // Change the status of the sell.begin()
+                    writeLineOutputFile(*ord);        // Fix: Dereference the pointer to ord
+
                     buy.erase(buy.begin());
                 }
                 else
@@ -211,13 +234,20 @@ public:
                     if (buy.begin()->quantity == 0)
                     {
                         // status of the buy.begin() change to Fill
-                        //---
+                        string b = buy.begin()->orderID;
+                        Order *ord = findOrderByOrdID(b); // Get the order details by order ID
+                        ord->status = status[2];          // Change the status of the sell.begin()
+                        writeLineOutputFile(*ord);        // Fix: Dereference the pointer to ord
+
                         buy.erase(buy.begin());
                     }
                     else
                     {
                         // status of the buy.begin() change to PFill
-                        //---
+                        string b = buy.begin()->orderID;
+                        Order *ord = findOrderByOrdID(b); // Get the order details by order ID
+                        ord->status = status[3];          // Change the status of the sell.begin()
+                        writeLineOutputFile(*ord);        // Fix: Dereference the pointer to ord
                     }
                     return;
                 }
@@ -242,11 +272,22 @@ public:
             cout << sell[i].orderID << " " << sell[i].quantity << " " << sell[i].price << endl;
         }
     }
+
+    void writeLineOutputFile(Order order)
+    {
+        ofile << order.orderID << "," << order.clientOrderID << "," << order.instrument << "," << order.side << "," << order.status << "," << order.quantity << "," << order.price << "," << order.reason << endl;
+        return;
+    }
 };
 
 int main()
 {
     // read the Orders.csv file
+    if (!ifile.is_open())
+    {
+        cout << "Error opening file" << endl;
+        return 0;
+    }
 
     int ordNumber = 1;
     string line;
@@ -288,6 +329,7 @@ int main()
         if (v[1] == "Rose")
         {
             rose->addOrder(*order);
+            rose->printOrderBook();
         }
         else if (v[1] == "Lavender")
         {
@@ -307,7 +349,6 @@ int main()
         }
         else
         {
-
             ofile << ordNumberString << "," << v[0] << "," << v[1] << "," << v[2] << ","
                   << "Rejected"
                   << "," << v[3] << "," << v[4] << "," << a << endl;
@@ -382,16 +423,4 @@ string checkValidityOfOrder(vector<string> v)
     }
 
     return reason;
-}
-
-Order *findOrderByOrdID(vector<Order> orders, string ordID)
-{
-    for (int i = 0; i < orders.size(); i++)
-    {
-        if (orders[i].orderID == ordID)
-        {
-            return &orders[i];
-        }
-    }
-    return NULL;
 }

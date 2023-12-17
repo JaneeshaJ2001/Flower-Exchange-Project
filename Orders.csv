@@ -3,12 +3,3 @@ Client Order ID,Instrument,Side,Quantity,Price
 aa13,Rose,1,100,55
 aa14,Rose,1,100,65
 aa15,Rose,2,300,1
-aa16,Rose,1,100,2
-aa17,Lo,1,500,65
-aa18,Lavender,2,300,34
-aa19,Tulip,5,1000,40
-aa20,Rose,1,100,-50
-aa21,Rose,1,100,45
-aa22,Rose,1,51,45
-aa23,Rose,1,8000,45
-aa24,Rose,1,2,45
