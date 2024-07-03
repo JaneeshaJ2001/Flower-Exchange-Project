@@ -13,7 +13,7 @@ In contrast to a socket-based architecture, this project employs a straightforwa
 
 2. Run the executable file of application.cpp
     ```bash
-    .\application.exe 
+    .\main.exe 
 
 ## Input and Output
 
